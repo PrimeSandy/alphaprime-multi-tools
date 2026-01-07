@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Base64 Encoder/Decoder</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Roboto+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                colors: {
+                    "primary": "#135bec",
+                    "secondary": "#10b981",
+                    "accent": "#f59e0b",
+                    "background-light": "#f6f6f8",
+                    "background-dark": "#101622",
+                },
+                fontFamily: {
+                    "display": ["Inter", "sans-serif"],
+                    "mono": ["Roboto Mono", "monospace"],
+                },
+                borderRadius: {"DEFAULT": "0.75rem", "lg": "1rem", "xl": "1.25rem", "full": "9999px"},
+                screens: {
+                    'xs': '475px',
+                }
+            },
+        },
+    }
+</script>
+<style>
+    .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    /* Loading Screen Styles */
+    #loading-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #f6f6f8;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
+    }
+    
+    .dark #loading-screen {
+        background: #101622;
+    }
+    
+    #loading-screen.hidden {
+        opacity: 0;
+        visibility: hidden;
+    }
+    
+    .loader {
+        width: 48px;
+        height: 48px;
+        border: 5px solid #135bec;
+        border-bottom-color: transparent;
+        border-radius: 50%;
+        display: inline-block;
+        box-sizing: border-box;
+        animation: rotation 1s linear infinite;
+    }
+    
+    @keyframes rotation {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .loading-text {
+        margin-top: 20px;
+        font-size: 18px;
+        font-weight: 600;
+        color: #135bec;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .dark .loading-text {
+        color: #60a5fa;
+    }
+    
+    .blur-content {
+        filter: blur(5px);
+        opacity: 0.5;
+        transition: all 0.5s ease-out;
+    }
+    
+    .content-loaded {
+        filter: blur(0);
+        opacity: 1;
+    }
+</style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#111318] dark:text-white min-h-screen flex flex-col overflow-x-hidden antialiased selection:bg-primary/30">
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loader"></div>
+        <div class="loading-text">Loading Base64 Utility...</div>
+    </div>
+
+    <!-- Main Content (initially blurred) -->
+    <div id="main-content" class="blur-content">
+        <!-- Header -->
+        <header class="bg-white dark:bg-[#1A202C] border-b border-[#e5e7eb] dark:border-[#2D3748] sticky top-0 z-50">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between py-3">
+                    <!-- Left: Logo and Title -->
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                            <span class="material-symbols-outlined">code</span>
+                        </div>
+                        <div>
+                            <h1 class="text-xl font-bold text-[#111318] dark:text-white">Base64 Utility</h1>
+                            <p class="text-xs text-[#616f89] dark:text-[#A0AEC0] hidden sm:block">Encode & Decode Instantly</p>
+                        </div>
+                    </div>
+
+                    <!-- Center: Status (Desktop only) -->
+                    <div class="hidden md:flex items-center gap-4">
+                        <div class="flex items-center gap-2 bg-[#f0f2f4] dark:bg-[#2D3748] px-3 py-1.5 rounded-lg">
+                            <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                            <span class="text-sm font-medium text-[#111318] dark:text-white">Ready</span>
+                        </div>
+                        <div class="text-sm text-[#616f89] dark:text-[#A0AEC0]">
+                            <span id="desktop-char-count">0 chars</span>
+                        </div>
+                    </div>
+
+                    <!-- Right: Theme Toggle and Home Button -->
+                    <div class="flex items-center gap-2">
+                        <!-- Theme Toggle -->
+                        <button id="theme-toggle" class="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-200/60 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-all" title="Toggle theme">
+                            <span id="theme-icon" class="material-symbols-outlined">dark_mode</span>
+                        </button>
+                        
+                        <!-- Home Button -->
+                        <button id="home-button" class="flex items-center gap-2 h-10 px-4 rounded-xl bg-primary text-white hover:bg-primary/90 transition-all">
+                            <span class="material-symbols-outlined">home</span>
+                            <span class="hidden sm:inline font-medium">Home</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Left Column: Input/Output (Full width on mobile, 2/3 on desktop) -->
+                <div class="lg:col-span-2">
+                    <!-- Main Card -->
+                    <div class="w-full bg-white dark:bg-[#1A202C] rounded-xl shadow-lg border border-[#e5e7eb] dark:border-[#2D3748] overflow-hidden">
+                        <!-- Input/Output Section -->
+                        <div class="p-6">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+                                <div>
+                                    <label class="text-lg font-bold text-[#111318] dark:text-white" for="base64-input">
+                                        Input / Output
+                                    </label>
+                                    <p class="text-sm text-[#616f89] dark:text-[#A0AEC0] mt-1">
+                                        Type or paste your text below
+                                    </p>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span id="status" class="text-sm font-medium text-primary bg-primary/10 px-3 py-1 rounded-full">Ready</span>
+                                    <span id="char-count" class="text-sm text-[#616f89] dark:text-[#A0AEC0] hidden xs:block">0 chars</span>
+                                </div>
+                            </div>
+                            
+                            <div class="relative group/input">
+                                <textarea 
+                                    id="base64-input" 
+                                    class="form-input w-full min-h-[300px] lg:min-h-[400px] bg-[#f9fafb] dark:bg-[#151a23] border border-[#dbdfe6] dark:border-[#4A5568] rounded-lg text-[#111318] dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-mono text-base leading-relaxed p-5 resize-y transition-all placeholder:text-[#9ca3af]"
+                                    placeholder="Paste text here to encode or decode Base64..."
+                                    spellcheck="false"
+                                    rows="12"
+                                ></textarea>
+                                <div class="absolute bottom-4 right-4 pointer-events-none opacity-50">
+                                    <span class="material-symbols-outlined text-xl text-gray-400">code</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="px-6 py-4 bg-[#f9fafb] dark:bg-[#151a23] border-t border-[#e5e7eb] dark:border-[#2D3748]">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <button id="encode-btn" class="group relative flex items-center justify-center gap-3 h-14 bg-primary hover:bg-[#114cd6] active:bg-[#0e3ea8] text-white rounded-xl transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                                    <span id="encode-icon" class="material-symbols-outlined text-[24px] group-hover:scale-110 transition-transform">enhanced_encryption</span>
+                                    <span class="text-lg font-bold tracking-[0.015em]">Encode to Base64</span>
+                                </button>
+                                <button id="decode-btn" class="group relative flex items-center justify-center gap-3 h-14 bg-secondary hover:bg-[#0da271] active:bg-[#0b8c60] text-white rounded-xl transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                                    <span id="decode-icon" class="material-symbols-outlined text-[24px] group-hover:scale-110 transition-transform">no_encryption</span>
+                                    <span class="text-lg font-bold tracking-[0.015em]">Decode from Base64</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Utility Buttons -->
+                        <div class="px-6 py-4 border-t border-[#e5e7eb] dark:border-[#2D3748]">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <button id="copy-btn" class="flex items-center justify-center gap-3 h-12 bg-[#f0f2f4] dark:bg-[#2D3748] hover:bg-[#e2e4e9] dark:hover:bg-[#4A5568] text-[#111318] dark:text-white rounded-lg transition-colors group">
+                                    <span id="copy-icon" class="material-symbols-outlined text-[20px] text-[#4b5563] dark:text-[#A0AEC0] group-hover:text-primary transition-colors">content_copy</span>
+                                    <span class="text-base font-bold tracking-[0.015em]">Copy Result</span>
+                                </button>
+                                <button id="clear-btn" class="flex items-center justify-center gap-3 h-12 bg-[#f0f2f4] dark:bg-[#2D3748] hover:bg-[#e2e4e9] dark:hover:bg-[#4A5568] text-[#111318] dark:text-white rounded-lg transition-colors group">
+                                    <span class="material-symbols-outlined text-[20px] text-[#4b5563] dark:text-[#A0AEC0] group-hover:text-red-500 transition-colors">delete</span>
+                                    <span class="text-base font-bold tracking-[0.015em]">Clear Text</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Security Info -->
+                    <div class="mt-6 p-5 bg-white dark:bg-[#1A202C] rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#2D3748]">
+                        <div class="flex items-start gap-4">
+                            <span class="material-symbols-outlined text-primary text-2xl flex-shrink-0 mt-0.5">shield</span>
+                            <div>
+                                <h3 class="text-lg font-bold text-[#111318] dark:text-white mb-2">Secure & Private</h3>
+                                <p class="text-[#616f89] dark:text-[#A0AEC0]">
+                                    All Base64 conversions happen locally in your browser. Your data never leaves your device and is not stored on any server. Perfect for sensitive information.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Stats & History (Full width on mobile, 1/3 on desktop) -->
+                <div class="lg:col-span-1">
+                    <!-- Stats Card -->
+                    <div class="w-full bg-white dark:bg-[#1A202C] rounded-xl shadow-lg border border-[#e5e7eb] dark:border-[#2D3748] overflow-hidden mb-6">
+                        <div class="p-5">
+                            <h3 class="text-lg font-bold text-[#111318] dark:text-white mb-4 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary">analytics</span>
+                                Statistics
+                            </h3>
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div class="bg-[#f9fafb] dark:bg-[#151a23] rounded-lg p-4">
+                                    <div class="text-[#616f89] dark:text-[#A0AEC0] text-xs font-medium mb-2">Input Size</div>
+                                    <div id="input-size" class="text-[#111318] dark:text-white text-xl font-bold">0 B</div>
+                                </div>
+                                <div class="bg-[#f9fafb] dark:bg-[#151a23] rounded-lg p-4">
+                                    <div class="text-[#616f89] dark:text-[#A0AEC0] text-xs font-medium mb-2">Output Size</div>
+                                    <div id="output-size" class="text-[#111318] dark:text-white text-xl font-bold">0 B</div>
+                                </div>
+                            </div>
+                            <div class="bg-[#f9fafb] dark:bg-[#151a23] rounded-lg p-4">
+                                <div class="text-[#616f89] dark:text-[#A0AEC0] text-xs font-medium mb-2">Last Action</div>
+                                <div id="last-action" class="text-[#111318] dark:text-white text-sm font-medium">None</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- History Card -->
+                    <div class="w-full bg-white dark:bg-[#1A202C] rounded-xl shadow-lg border border-[#e5e7eb] dark:border-[#2D3748] overflow-hidden">
+                        <div class="p-5">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-bold text-[#111318] dark:text-white flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-primary">history</span>
+                                    Recent Actions
+                                </h3>
+                                <button id="clear-history-btn" class="text-sm text-[#616f89] dark:text-[#A0AEC0] hover:text-red-500 transition-colors flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[16px]">delete_sweep</span>
+                                    Clear
+                                </button>
+                            </div>
+                            <div id="history-list" class="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+                                <div class="text-center py-8 text-[#616f89] dark:text-[#A0AEC0] text-sm">
+                                    <span class="material-symbols-outlined text-3xl mb-2 block opacity-50">history_toggle_off</span>
+                                    No actions yet
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions Card -->
+                    <div class="w-full bg-white dark:bg-[#1A202C] rounded-xl shadow-lg border border-[#e5e7eb] dark:border-[#2D3748] overflow-hidden mt-6">
+                        <div class="p-5">
+                            <h3 class="text-lg font-bold text-[#111318] dark:text-white mb-4 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary">bolt</span>
+                                Quick Actions
+                            </h3>
+                            <div class="space-y-3">
+                                <button onclick="encodeText()" class="w-full flex items-center justify-between p-3 bg-[#f9fafb] dark:bg-[#151a23] hover:bg-[#f0f2f4] dark:hover:bg-[#1a202c] rounded-lg transition-colors group">
+                                    <div class="flex items-center gap-3">
+                                        <span class="material-symbols-outlined text-primary">enhanced_encryption</span>
+                                        <span class="font-medium">Encode</span>
+                                    </div>
+                                    <span class="text-xs text-[#616f89] dark:text-[#A0AEC0] group-hover:text-primary">Ctrl+E</span>
+                                </button>
+                                <button onclick="decodeText()" class="w-full flex items-center justify-between p-3 bg-[#f9fafb] dark:bg-[#151a23] hover:bg-[#f0f2f4] dark:hover:bg-[#1a202c] rounded-lg transition-colors group">
+                                    <div class="flex items-center gap-3">
+                                        <span class="material-symbols-outlined text-secondary">no_encryption</span>
+                                        <span class="font-medium">Decode</span>
+                                    </div>
+                                    <span class="text-xs text-[#616f89] dark:text-[#A0AEC0] group-hover:text-secondary">Ctrl+D</span>
+                                </button>
+                                <button onclick="copyToClipboard()" class="w-full flex items-center justify-between p-3 bg-[#f9fafb] dark:bg-[#151a23] hover:bg-[#f0f2f4] dark:hover:bg-[#1a202c] rounded-lg transition-colors group">
+                                    <div class="flex items-center gap-3">
+                                        <span class="material-symbols-outlined text-accent">content_copy</span>
+                                        <span class="font-medium">Copy Result</span>
+                                    </div>
+                                    <span class="text-xs text-[#616f89] dark:text-[#A0AEC0] group-hover:text-accent">Ctrl+C</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <footer class="mt-8 pt-6 border-t border-[#e5e7eb] dark:border-[#2D3748]">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div class="text-center md:text-left">
+                        <p class="text-[#616f89] dark:text-[#A0AEC0] text-sm">
+                            Base64 Utility v1.0.0 • All processing done locally in your browser
+                        </p>
+                        <p class="text-xs text-[#616f89] dark:text-[#A0AEC0] mt-1">
+                            No data is sent to any server • 100% Secure & Private
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <button onclick="showHelp()" class="text-sm text-[#616f89] dark:text-[#A0AEC0] hover:text-primary transition-colors flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[16px]">help</span>
+                            Help
+                        </button>
+                        <button onclick="showAbout()" class="text-sm text-[#616f89] dark:text-[#A0AEC0] hover:text-primary transition-colors flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[16px]">info</span>
+                            About
+                        </button>
+                    </div>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        // DOM Elements
+        const loadingScreen = document.getElementById('loading-screen');
+        const mainContent = document.getElementById('main-content');
+        const base64Input = document.getElementById('base64-input');
+        const encodeBtn = document.getElementById('encode-btn');
+        const decodeBtn = document.getElementById('decode-btn');
+        const copyBtn = document.getElementById('copy-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const clearHistoryBtn = document.getElementById('clear-history-btn');
+        const homeButton = document.getElementById('home-button');
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const statusEl = document.getElementById('status');
+        const charCount = document.getElementById('char-count');
+        const desktopCharCount = document.getElementById('desktop-char-count');
+        const inputSize = document.getElementById('input-size');
+        const outputSize = document.getElementById('output-size');
+        const lastAction = document.getElementById('last-action');
+        const historyList = document.getElementById('history-list');
+        const copyIcon = document.getElementById('copy-icon');
+        const encodeIcon = document.getElementById('encode-icon');
+        const decodeIcon = document.getElementById('decode-icon');
+
+        // State Variables
+        let history = [];
+        let lastOperation = null;
+        let originalText = '';
+        let currentText = '';
+
+        // Loading Simulation Function
+        function simulateLoading() {
+            return new Promise((resolve) => {
+                setTimeout(() => resolve(), 1000);
+            });
+        }
+
+        // Hide Loading Screen and Show Content
+        function showContent() {
+            loadingScreen.classList.add('hidden');
+            mainContent.classList.remove('blur-content');
+            mainContent.classList.add('content-loaded');
+            
+            setTimeout(() => {
+                base64Input.focus();
+            }, 300);
+        }
+
+        // Initialize
+        async function initializeApp() {
+            loadingScreen.classList.remove('hidden');
+            mainContent.classList.add('blur-content');
+            
+            await simulateLoading();
+            
+            // Load saved theme
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                themeIcon.textContent = 'light_mode';
+            } else {
+                document.documentElement.classList.remove('dark');
+                themeIcon.textContent = 'dark_mode';
+            }
+
+            // Load history from localStorage
+            const savedHistory = localStorage.getItem('base64History');
+            if (savedHistory) {
+                history = JSON.parse(savedHistory);
+                renderHistory();
+            }
+
+            // Set initial sample text
+            const sampleText = "Welcome to Base64 Utility! 🎉\n\nTry encoding this text or paste your own Base64 string to decode.\n\nExample Base64 string:\nV2VsY29tZSB0byBCYXNlNjQgVXRpbGl0eSEg8J+NiQoKVHJ5IGVuY29kaW5nIHRoaXMgdGV4dCBvciBwYXN0ZSB5b3VyIG93biBCYXNlNjQgc3RyaW5nIHRvIGRlY29kZS4KCkV4YW1wbGUgQmFzZTY0IHN0cmluZzo=";
+            base64Input.value = sampleText;
+            originalText = sampleText;
+            currentText = sampleText;
+            updateStatistics();
+            updateStatus('ready');
+            
+            setTimeout(showContent, 300);
+        }
+
+        // Base64 Encoding Function
+        function encodeBase64(text) {
+            try {
+                const base64 = btoa(unescape(encodeURIComponent(text)));
+                return base64;
+            } catch (error) {
+                throw new Error('Encoding failed. Please check your input.');
+            }
+        }
+
+        // Base64 Decoding Function
+        function decodeBase64(base64) {
+            try {
+                const text = decodeURIComponent(escape(atob(base64)));
+                return text;
+            } catch (error) {
+                throw new Error('Decoding failed. Invalid Base64 string.');
+            }
+        }
+
+        // Validate Base64 string
+        function isValidBase64(str) {
+            try {
+                return btoa(atob(str)) === str;
+            } catch (err) {
+                return false;
+            }
+        }
+
+        // Update Statistics
+        function updateStatistics() {
+            const text = base64Input.value;
+            const chars = text.length;
+            const bytes = new Blob([text]).size;
+            
+            charCount.textContent = `${chars} chars`;
+            desktopCharCount.textContent = `${chars} chars`;
+            inputSize.textContent = `${formatBytes(bytes)}`;
+            
+            // Calculate output size
+            let outputBytes = 0;
+            if (lastOperation === 'encode') {
+                const encoded = encodeBase64(text);
+                outputBytes = new Blob([encoded]).size;
+            } else if (lastOperation === 'decode') {
+                try {
+                    const decoded = decodeBase64(text);
+                    outputBytes = new Blob([decoded]).size;
+                } catch (e) {
+                    outputBytes = 0;
+                }
+            } else {
+                outputBytes = bytes;
+            }
+            
+            outputSize.textContent = `${formatBytes(outputBytes)}`;
+        }
+
+        // Format bytes to human readable format
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Update Status
+        function updateStatus(status, message = '') {
+            statusEl.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+            
+            switch(status) {
+                case 'ready':
+                    statusEl.className = 'text-sm font-medium text-primary bg-primary/10 px-3 py-1 rounded-full';
+                    break;
+                case 'encoding':
+                    statusEl.className = 'text-sm font-medium text-accent bg-accent/10 px-3 py-1 rounded-full';
+                    break;
+                case 'decoding':
+                    statusEl.className = 'text-sm font-medium text-secondary bg-secondary/10 px-3 py-1 rounded-full';
+                    break;
+                case 'success':
+                    statusEl.className = 'text-sm font-medium text-green-600 bg-green-100 px-3 py-1 rounded-full';
+                    break;
+                case 'error':
+                    statusEl.className = 'text-sm font-medium text-red-600 bg-red-100 px-3 py-1 rounded-full';
+                    break;
+            }
+            
+            if (message) {
+                lastAction.textContent = message;
+            }
+        }
+
+        // Add to History
+        function addToHistory(action, input, output) {
+            const timestamp = new Date().toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit'
+            });
+            
+            const historyItem = {
+                action: action,
+                input: input.length > 25 ? input.substring(0, 25) + '...' : input,
+                output: output.length > 25 ? output.substring(0, 25) + '...' : output,
+                time: timestamp,
+                fullInput: input,
+                fullOutput: output
+            };
+            
+            history.unshift(historyItem);
+            if (history.length > 8) history.pop();
+            
+            localStorage.setItem('base64History', JSON.stringify(history));
+            renderHistory();
+        }
+
+        // Render History
+        function renderHistory() {
+            if (history.length === 0) {
+                historyList.innerHTML = `
+                    <div class="text-center py-8 text-[#616f89] dark:text-[#A0AEC0] text-sm">
+                        <span class="material-symbols-outlined text-3xl mb-2 block opacity-50">history_toggle_off</span>
+                        No actions yet
+                    </div>
+                `;
+                return;
+            }
+            
+            historyList.innerHTML = history.map((item, index) => `
+                <div class="bg-[#f9fafb] dark:bg-[#151a23] rounded-lg p-3 cursor-pointer hover:bg-[#f0f2f4] dark:hover:bg-[#1a202c] transition-colors group"
+                     onclick="loadFromHistory(${index})">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold ${item.action === 'encode' ? 'text-primary' : 'text-secondary'}">
+                            ${item.action === 'encode' ? 'Encode' : 'Decode'}
+                        </span>
+                        <span class="text-xs text-[#616f89] dark:text-[#A0AEC0]">${item.time}</span>
+                    </div>
+                    <div class="text-xs text-[#616f89] dark:text-[#A0AEC0] mb-1 truncate">
+                        <span class="font-medium">In:</span> ${item.input}
+                    </div>
+                    <div class="text-xs text-[#616f89] dark:text-[#A0AEC0] truncate">
+                        <span class="font-medium">Out:</span> ${item.output}
+                    </div>
+                    <div class="mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span class="text-xs text-primary flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[14px]">open_in_new</span>
+                            Click to load
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Load from History
+        window.loadFromHistory = function(index) {
+            const item = history[index];
+            if (item) {
+                base64Input.value = item.fullOutput;
+                originalText = item.fullInput;
+                currentText = item.fullOutput;
+                updateStatistics();
+                updateStatus('ready', `Loaded ${item.action} from history`);
+                lastOperation = item.action;
+            }
+        };
+
+        // Encode Text
+        window.encodeText = function() {
+            const text = base64Input.value;
+            if (!text.trim()) {
+                updateStatus('error', 'Please enter text to encode');
+                return;
+            }
+            
+            try {
+                updateStatus('encoding', 'Encoding to Base64...');
+                
+                setTimeout(() => {
+                    const encoded = encodeBase64(text);
+                    base64Input.value = encoded;
+                    originalText = text;
+                    currentText = encoded;
+                    lastOperation = 'encode';
+                    
+                    updateStatistics();
+                    updateStatus('success', 'Text encoded successfully');
+                    addToHistory('encode', text, encoded);
+                    
+                    // Button animation
+                    encodeIcon.textContent = 'check';
+                    encodeBtn.classList.add('bg-green-600');
+                    setTimeout(() => {
+                        encodeIcon.textContent = 'enhanced_encryption';
+                        encodeBtn.classList.remove('bg-green-600');
+                    }, 1000);
+                }, 300);
+            } catch (error) {
+                updateStatus('error', error.message);
+            }
+        };
+
+        // Decode Text
+        window.decodeText = function() {
+            const text = base64Input.value.trim();
+            if (!text) {
+                updateStatus('error', 'Please enter Base64 to decode');
+                return;
+            }
+            
+            if (!isValidBase64(text)) {
+                updateStatus('error', 'Invalid Base64 string');
+                return;
+            }
+            
+            try {
+                updateStatus('decoding', 'Decoding from Base64...');
+                
+                setTimeout(() => {
+                    const decoded = decodeBase64(text);
+                    base64Input.value = decoded;
+                    originalText = text;
+                    currentText = decoded;
+                    lastOperation = 'decode';
+                    
+                    updateStatistics();
+                    updateStatus('success', 'Text decoded successfully');
+                    addToHistory('decode', text, decoded);
+                    
+                    // Button animation
+                    decodeIcon.textContent = 'check';
+                    decodeBtn.classList.add('bg-green-600');
+                    setTimeout(() => {
+                        decodeIcon.textContent = 'no_encryption';
+                        decodeBtn.classList.remove('bg-green-600');
+                    }, 1000);
+                }, 300);
+            } catch (error) {
+                updateStatus('error', error.message);
+            }
+        };
+
+        // Copy to Clipboard
+        window.copyToClipboard = async function() {
+            if (!base64Input.value.trim()) {
+                updateStatus('error', 'Nothing to copy');
+                return;
+            }
+            
+            try {
+                await navigator.clipboard.writeText(base64Input.value);
+                updateStatus('success', 'Copied to clipboard');
+                
+                copyIcon.textContent = 'check';
+                copyBtn.classList.add('bg-green-100', 'dark:bg-green-900/30');
+                setTimeout(() => {
+                    copyIcon.textContent = 'content_copy';
+                    copyBtn.classList.remove('bg-green-100', 'dark:bg-green-900/30');
+                }, 2000);
+            } catch (err) {
+                updateStatus('error', 'Failed to copy');
+            }
+        };
+
+        // Clear Text
+        function clearText() {
+            if (base64Input.value.trim()) {
+                addToHistory('clear', base64Input.value, '');
+            }
+            
+            base64Input.value = '';
+            base64Input.focus();
+            originalText = '';
+            currentText = '';
+            lastOperation = null;
+            
+            updateStatistics();
+            updateStatus('ready', 'Text cleared');
+        }
+
+        // Clear History
+        function clearHistory() {
+            if (history.length === 0) {
+                updateStatus('error', 'No history to clear');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to clear all history?')) {
+                history = [];
+                localStorage.removeItem('base64History');
+                renderHistory();
+                updateStatus('success', 'History cleared');
+            }
+        }
+
+        // Home Button - Reset to Welcome
+        function goHome() {
+            const welcomeText = "Welcome to Base64 Utility! 🎉\n\nTry encoding this text or paste your own Base64 string to decode.\n\nExample Base64 string:\nV2VsY29tZSB0byBCYXNlNjQgVXRpbGl0eSEg8J+NiQoKVHJ5IGVuY29kaW5nIHRoaXMgdGV4dCBvciBwYXN0ZSB5b3VyIG93biBCYXNlNjQgc3RyaW5nIHRvIGRlY29kZS4KCkV4YW1wbGUgQmFzZTY0IHN0cmluZzo=";
+            
+            if (base64Input.value !== welcomeText) {
+                addToHistory('home', base64Input.value, welcomeText);
+            }
+            
+            base64Input.value = welcomeText;
+            base64Input.focus();
+            originalText = welcomeText;
+            currentText = welcomeText;
+            lastOperation = null;
+            
+            updateStatistics();
+            updateStatus('ready', 'Welcome back!');
+        }
+
+        // Theme Toggle
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.contains('dark');
+            if (isDark) {
+                document.documentElement.classList.remove('dark');
+                themeIcon.textContent = 'dark_mode';
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                themeIcon.textContent = 'light_mode';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Show Help
+        window.showHelp = function() {
+            alert('Base64 Utility Help:\n\n• Encode: Convert any text to Base64 format\n• Decode: Convert Base64 back to text\n• Copy: Copy the result to clipboard\n• Clear: Clear all text\n• History: View and load previous conversions\n\nKeyboard Shortcuts:\n• Ctrl+E: Encode\n• Ctrl+D: Decode\n• Ctrl+C: Copy\n• Ctrl+L: Clear\n• Ctrl+H: Home\n• Ctrl+T: Toggle theme');
+        };
+
+        // Show About
+        window.showAbout = function() {
+            alert('Base64 Utility v1.0.0\n\nA powerful tool for encoding and decoding Base64 strings.\n\nFeatures:\n• Client-side processing (no server)\n• Dark/Light theme\n• History tracking\n• Keyboard shortcuts\n• Responsive design\n\nYour data never leaves your browser!');
+        };
+
+        // Event Listeners
+        base64Input.addEventListener('input', function() {
+            currentText = this.value;
+            updateStatistics();
+            updateStatus('ready');
+        });
+
+        encodeBtn.addEventListener('click', encodeText);
+        decodeBtn.addEventListener('click', decodeText);
+        copyBtn.addEventListener('click', copyToClipboard);
+        clearBtn.addEventListener('click', clearText);
+        clearHistoryBtn.addEventListener('click', clearHistory);
+        homeButton.addEventListener('click', goHome);
+        themeToggle.addEventListener('click', toggleTheme);
+
+        // Auto-resize textarea
+        base64Input.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        // Keyboard Shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key.toLowerCase()) {
+                    case 'e':
+                        e.preventDefault();
+                        encodeText();
+                        break;
+                    case 'd':
+                        e.preventDefault();
+                        decodeText();
+                        break;
+                    case 'c':
+                        if (document.activeElement !== base64Input) {
+                            e.preventDefault();
+                            copyToClipboard();
+                        }
+                        break;
+                    case 'l':
+                        e.preventDefault();
+                        clearText();
+                        break;
+                    case 'h':
+                        e.preventDefault();
+                        goHome();
+                        break;
+                    case 't':
+                        e.preventDefault();
+                        toggleTheme();
+                        break;
+                }
+            }
+        });
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', initializeApp);
+    </script>
+</body>
+</html>

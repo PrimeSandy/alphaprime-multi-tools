@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Text Case Converter</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            line-height: 1;
+        }
+        /* Loading Screen Styles */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #f6f7f8;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
+        }
+        
+        .dark #loading-screen {
+            background: #101922;
+        }
+        
+        #loading-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+        
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 5px solid #137fec;
+            border-bottom-color: transparent;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+        
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #137fec;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .dark .loading-text {
+            color: #60a5fa;
+        }
+        
+        .blur-content {
+            filter: blur(5px);
+            opacity: 0.5;
+            transition: all 0.5s ease-out;
+        }
+        
+        .content-loaded {
+            filter: blur(0);
+            opacity: 1;
+        }
+    </style>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "secondary": "#10b981",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.75rem", "lg": "1rem", "xl": "1.25rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loader"></div>
+        <div class="loading-text">Loading Text Converter...</div>
+    </div>
+
+    <!-- Main Content (initially blurred) -->
+    <div id="main-content" class="blur-content">
+        <!-- Header -->
+        <div class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-lg border-b border-zinc-300/50 dark:border-zinc-700/50">
+            <div class="flex items-center p-4">
+                <!-- Left Side: Home Button -->
+                <button id="home-button" class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white hover:bg-primary/90 transition-all mr-3">
+                    <span class="material-symbols-outlined">home</span>
+                </button>
+
+                <!-- Center: Title -->
+                <div class="flex items-center gap-3 flex-1">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <span class="material-symbols-outlined">text_fields</span>
+                    </div>
+                    <h1 class="text-xl font-bold text-zinc-900 dark:text-white">Text Case Converter</h1>
+                </div>
+
+                <!-- Right Side: Settings Button -->
+                <button id="settings-btn" class="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-200/60 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-all">
+                    <span class="material-symbols-outlined">settings</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="p-4 max-w-4xl mx-auto">
+            <!-- Single Text Box -->
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-3">
+                    <label class="text-zinc-800 dark:text-zinc-300 text-base font-medium">
+                        Your Text
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <span id="char-count" class="text-sm text-zinc-500 dark:text-zinc-400">0 chars</span>
+                        <div class="w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
+                        <span id="word-count" class="text-sm text-zinc-500 dark:text-zinc-400">0 words</span>
+                    </div>
+                </div>
+                
+                <div class="relative">
+                    <textarea 
+                        id="text-box"
+                        class="w-full rounded-xl border-2 border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:placeholder:text-zinc-400 p-4 text-base leading-relaxed resize-y min-h-[200px] focus:outline-none focus:border-primary transition-all"
+                        placeholder="Type or paste your text here. All conversions will appear in this box..."
+                        rows="8"
+                        spellcheck="true"
+                    ></textarea>
+                    
+                    <!-- Action Buttons -->
+                    <div class="absolute bottom-3 right-3 flex gap-2">
+                        <button id="paste-btn" 
+                            class="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-200/80 dark:bg-zinc-700/80 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-all"
+                            title="Paste">
+                            <span class="material-symbols-outlined">content_paste</span>
+                        </button>
+                        
+                        <button id="copy-btn"
+                            class="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-800/50 transition-all"
+                            title="Copy">
+                            <span id="copy-icon" class="material-symbols-outlined">content_copy</span>
+                        </button>
+                        
+                        <button id="clear-btn"
+                            class="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-800/50 transition-all"
+                            title="Clear">
+                            <span class="material-symbols-outlined">delete</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conversion Buttons -->
+            <div class="mb-6">
+                <h3 class="text-zinc-800 dark:text-zinc-300 text-base font-semibold mb-3">
+                    Convert to:
+                </h3>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <button data-case="uppercase" 
+                        class="case-btn flex h-12 items-center justify-center gap-2 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-primary/10 hover:border-primary hover:text-primary dark:hover:text-primary transition-all">
+                        <span class="material-symbols-outlined text-sm">arrow_upward</span>
+                        UPPERCASE
+                    </button>
+                    
+                    <button data-case="lowercase"
+                        class="case-btn flex h-12 items-center justify-center gap-2 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-primary/10 hover:border-primary hover:text-primary dark:hover:text-primary transition-all">
+                        <span class="material-symbols-outlined text-sm">arrow_downward</span>
+                        lowercase
+                    </button>
+                    
+                    <button data-case="titlecase"
+                        class="case-btn flex h-12 items-center justify-center gap-2 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-primary/10 hover:border-primary hover:text-primary dark:hover:text-primary transition-all">
+                        <span class="material-symbols-outlined text-sm">title</span>
+                        Title Case
+                    </button>
+                    
+                    <button data-case="sentencecase"
+                        class="case-btn flex h-12 items-center justify-center gap-2 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-primary/10 hover:border-primary hover:text-primary dark:hover:text-primary transition-all">
+                        <span class="material-symbols-outlined text-sm">text_fields</span>
+                        Sentence case
+                    </button>
+                </div>
+            </div>
+
+            <!-- Additional Actions -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button id="undo-btn"
+                    class="flex h-12 items-center justify-center gap-2 rounded-xl bg-zinc-200/60 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-all">
+                    <span class="material-symbols-outlined">undo</span>
+                    Undo Last Action
+                </button>
+                
+                <button id="select-all-btn"
+                    class="flex h-12 items-center justify-center gap-2 rounded-xl bg-zinc-200/60 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-all">
+                    <span class="material-symbols-outlined">select_all</span>
+                    Select All Text
+                </button>
+            </div>
+
+            <!-- Preview Card -->
+            <div class="mt-8 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-300 dark:border-zinc-700 p-5">
+                <h3 class="text-zinc-800 dark:text-zinc-300 text-base font-semibold mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined">preview</span>
+                    Preview
+                </h3>
+                <div id="preview-box" class="bg-zinc-100 dark:bg-zinc-900/50 rounded-lg p-4 min-h-[100px] text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">
+                    Text preview will appear here...
+                </div>
+                <div class="mt-4 pt-4 border-t border-zinc-300/50 dark:border-zinc-700/50">
+                    <div class="text-sm text-zinc-600 dark:text-zinc-400 mb-1">Current Case:</div>
+                    <div id="current-case" class="font-semibold text-primary">Original Text</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // DOM Elements
+        const loadingScreen = document.getElementById('loading-screen');
+        const mainContent = document.getElementById('main-content');
+        const homeButton = document.getElementById('home-button');
+        const textBox = document.getElementById('text-box');
+        const copyBtn = document.getElementById('copy-btn');
+        const pasteBtn = document.getElementById('paste-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const undoBtn = document.getElementById('undo-btn');
+        const selectAllBtn = document.getElementById('select-all-btn');
+        const settingsBtn = document.getElementById('settings-btn');
+        const caseButtons = document.querySelectorAll('.case-btn');
+        const charCount = document.getElementById('char-count');
+        const wordCount = document.getElementById('word-count');
+        const previewBox = document.getElementById('preview-box');
+        const currentCase = document.getElementById('current-case');
+        const copyIcon = document.getElementById('copy-icon');
+
+        // State Variables
+        let history = [];
+        let currentCaseType = 'original';
+
+        // Loading Simulation Function
+        function simulateLoading() {
+            return new Promise((resolve) => {
+                // Simulate minimum loading time of 1.5 seconds
+                setTimeout(() => {
+                    resolve();
+                }, 1500);
+            });
+        }
+
+        // Hide Loading Screen and Show Content
+        function showContent() {
+            loadingScreen.classList.add('hidden');
+            mainContent.classList.remove('blur-content');
+            mainContent.classList.add('content-loaded');
+            
+            // Focus on text box after transition
+            setTimeout(() => {
+                textBox.focus();
+            }, 300);
+        }
+
+        // Initialize
+        async function initializeApp() {
+            // Show loading screen initially
+            loadingScreen.classList.remove('hidden');
+            mainContent.classList.add('blur-content');
+            
+            // Wait for loading simulation
+            await simulateLoading();
+            
+            // Load saved theme
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            if (savedTheme === 'light') {
+                document.documentElement.classList.remove('dark');
+            } else {
+                document.documentElement.classList.add('dark');
+            }
+
+            // Initialize with sample text
+            const sampleText = `Welcome to Text Case Converter! ✨
+
+Type or paste your text above, then click any conversion button.
+
+Try this example:
+"hello world text converter"
+
+Features:
+• Multiple case conversions
+• Real-time preview
+• Copy/paste functionality
+• Dark/light mode
+• Mobile responsive
+
+Start converting now! 🚀`;
+            
+            textBox.value = sampleText;
+            updateStatistics(sampleText);
+            updatePreview(sampleText, 'original');
+            
+            // Show content with transition
+            setTimeout(showContent, 300);
+        }
+
+        // Home Button Functionality - Reset to Welcome Text
+        function goHome() {
+            // Save current text to history if not empty
+            if (textBox.value.trim()) {
+                saveToHistory(textBox.value, currentCaseType);
+            }
+            
+            // Reset to welcome text
+            const welcomeText = `Welcome to Text Case Converter! ✨
+
+Type or paste your text above, then click any conversion button.
+
+Try this example:
+"hello world text converter"
+
+Features:
+• Multiple case conversions
+• Real-time preview
+• Copy/paste functionality
+• Dark/light mode
+• Mobile responsive
+
+Start converting now! 🚀`;
+            
+            textBox.value = welcomeText;
+            textBox.focus();
+            updateStatistics(welcomeText);
+            updatePreview(welcomeText, 'original');
+            resetActiveButtons();
+            
+            // Save to history
+            saveToHistory(welcomeText, 'original');
+        }
+
+        // Case Conversion Functions
+        const caseConverters = {
+            uppercase: (text) => text.toUpperCase(),
+            lowercase: (text) => text.toLowerCase(),
+            titlecase: (text) => {
+                return text.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+            },
+            sentencecase: (text) => {
+                return text.toLowerCase().replace(/(^\s*\w|[.!?]\s+\w)/g, match => match.toUpperCase());
+            }
+        };
+
+        // Update Statistics
+        function updateStatistics(text) {
+            const chars = text.length;
+            const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+            
+            charCount.textContent = `${chars} chars`;
+            wordCount.textContent = `${words} words`;
+        }
+
+        // Update Preview
+        function updatePreview(text, caseType) {
+            if (!text.trim()) {
+                previewBox.textContent = 'Text preview will appear here...';
+                currentCase.textContent = 'Original Text';
+                return;
+            }
+            
+            const preview = text.length > 150 ? text.substring(0, 150) + '...' : text;
+            previewBox.textContent = preview;
+            
+            const caseNames = {
+                uppercase: 'UPPERCASE',
+                lowercase: 'lowercase',
+                titlecase: 'Title Case',
+                sentencecase: 'Sentence Case',
+                original: 'Original Text'
+            };
+            
+            currentCase.textContent = caseNames[caseType] || 'Original Text';
+            currentCaseType = caseType;
+        }
+
+        // Save to History
+        function saveToHistory(text, caseType) {
+            history.push({
+                text: text,
+                caseType: caseType,
+                time: new Date().toLocaleTimeString()
+            });
+            
+            // Keep only last 50 actions
+            if (history.length > 50) {
+                history.shift();
+            }
+            
+            // Save to localStorage
+            localStorage.setItem('conversionHistory', JSON.stringify(history));
+        }
+
+        // Convert Text
+        function convertText(caseType) {
+            const text = textBox.value;
+            if (!text.trim()) return;
+            
+            // Save current state to history
+            saveToHistory(text, currentCaseType);
+            
+            const converter = caseConverters[caseType];
+            if (converter) {
+                const convertedText = converter(text);
+                textBox.value = convertedText;
+                updateStatistics(convertedText);
+                updatePreview(convertedText, caseType);
+                
+                // Update button active state
+                caseButtons.forEach(btn => {
+                    if (btn.dataset.case === caseType) {
+                        btn.classList.add('bg-primary/20', 'border-primary', 'text-primary');
+                    } else {
+                        btn.classList.remove('bg-primary/20', 'border-primary', 'text-primary');
+                    }
+                });
+            }
+        }
+
+        // Copy to Clipboard
+        async function copyToClipboard() {
+            if (!textBox.value.trim()) return;
+            
+            try {
+                await navigator.clipboard.writeText(textBox.value);
+                copyIcon.textContent = 'check';
+                copyBtn.classList.add('bg-green-200', 'dark:bg-green-800/50');
+                
+                setTimeout(() => {
+                    copyIcon.textContent = 'content_copy';
+                    copyBtn.classList.remove('bg-green-200', 'dark:bg-green-800/50');
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+                copyIcon.textContent = 'error';
+                setTimeout(() => {
+                    copyIcon.textContent = 'content_copy';
+                }, 2000);
+            }
+        }
+
+        // Paste from Clipboard
+        async function pasteFromClipboard() {
+            try {
+                const text = await navigator.clipboard.readText();
+                const cursorPos = textBox.selectionStart;
+                const currentText = textBox.value;
+                const newText = currentText.substring(0, cursorPos) + text + currentText.substring(cursorPos);
+                
+                textBox.value = newText;
+                textBox.focus();
+                textBox.selectionStart = cursorPos + text.length;
+                textBox.selectionEnd = cursorPos + text.length;
+                
+                updateStatistics(newText);
+                updatePreview(newText, 'original');
+                resetActiveButtons();
+                
+                // Save to history
+                saveToHistory(newText, 'original');
+            } catch (err) {
+                console.error('Failed to paste:', err);
+                textBox.focus();
+            }
+        }
+
+        // Clear Text
+        function clearText() {
+            if (textBox.value.trim()) {
+                saveToHistory(textBox.value, currentCaseType);
+            }
+            textBox.value = '';
+            textBox.focus();
+            updateStatistics('');
+            updatePreview('', 'original');
+            resetActiveButtons();
+        }
+
+        // Undo Action
+        function undoAction() {
+            if (history.length > 0) {
+                const lastAction = history.pop();
+                if (lastAction) {
+                    textBox.value = lastAction.text;
+                    updateStatistics(lastAction.text);
+                    updatePreview(lastAction.text, lastAction.caseType);
+                    textBox.focus();
+                    
+                    // Update active button
+                    caseButtons.forEach(btn => {
+                        if (btn.dataset.case === lastAction.caseType) {
+                            btn.classList.add('bg-primary/20', 'border-primary', 'text-primary');
+                        } else {
+                            btn.classList.remove('bg-primary/20', 'border-primary', 'text-primary');
+                        }
+                    });
+                    
+                    // Save updated history
+                    localStorage.setItem('conversionHistory', JSON.stringify(history));
+                }
+            }
+        }
+
+        // Select All Text
+        function selectAllText() {
+            textBox.select();
+            textBox.focus();
+        }
+
+        // Reset Active Buttons
+        function resetActiveButtons() {
+            caseButtons.forEach(btn => {
+                btn.classList.remove('bg-primary/20', 'border-primary', 'text-primary');
+            });
+            currentCaseType = 'original';
+            currentCase.textContent = 'Original Text';
+        }
+
+        // Navigate to Settings
+        function goToSettings() {
+            // Show loading screen before navigating
+            loadingScreen.classList.remove('hidden');
+            mainContent.classList.add('blur-content');
+            
+            setTimeout(() => {
+                window.location.href = 'settings.html';
+            }, 300);
+        }
+
+        // Event Listeners
+        homeButton.addEventListener('click', goHome);
+        textBox.addEventListener('input', function() {
+            updateStatistics(this.value);
+            updatePreview(this.value, currentCaseType);
+        });
+
+        copyBtn.addEventListener('click', copyToClipboard);
+        pasteBtn.addEventListener('click', pasteFromClipboard);
+        clearBtn.addEventListener('click', clearText);
+        undoBtn.addEventListener('click', undoAction);
+        selectAllBtn.addEventListener('click', selectAllText);
+        settingsBtn.addEventListener('click', goToSettings);
+
+        caseButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                convertText(button.dataset.case);
+            });
+        });
+
+        // Auto-resize textarea
+        textBox.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        // Keyboard Shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key.toLowerCase()) {
+                    case 'c':
+                        if (document.activeElement === textBox) {
+                            // Allow default copy
+                        } else {
+                            e.preventDefault();
+                            copyToClipboard();
+                        }
+                        break;
+                    case 'v':
+                        if (document.activeElement === textBox) {
+                            // Allow default paste
+                            setTimeout(() => {
+                                updateStatistics(textBox.value);
+                                updatePreview(textBox.value, currentCaseType);
+                            }, 0);
+                        } else {
+                            e.preventDefault();
+                            pasteFromClipboard();
+                        }
+                        break;
+                    case 'a':
+                        e.preventDefault();
+                        selectAllText();
+                        break;
+                    case 'z':
+                        e.preventDefault();
+                        undoAction();
+                        break;
+                    case 'd':
+                        e.preventDefault();
+                        clearText();
+                        break;
+                    case 'h':
+                        e.preventDefault();
+                        goHome();
+                        break;
+                }
+            }
+        });
+
+        // Load history from localStorage
+        const savedHistory = localStorage.getItem('conversionHistory');
+        if (savedHistory) {
+            history = JSON.parse(savedHistory);
+        }
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', initializeApp);
+    </script>
+</body>
+</html>

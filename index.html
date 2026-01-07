@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AlphaPrime – Free Online Tools</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+    }
+
+    header {
+      padding: 20px;
+      background: #020617;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    header p {
+      margin: 6px 0 0;
+      color: #94a3b8;
+      font-size: 14px;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+      font-size: 20px;
+    }
+
+    .tools {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .tool-card {
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 20px;
+      transition: transform 0.2s, border 0.2s;
+    }
+
+    .tool-card:hover {
+      transform: translateY(-4px);
+      border-color: #2563eb;
+    }
+
+    .tool-card h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+
+    .tool-card p {
+      font-size: 14px;
+      color: #94a3b8;
+      margin-bottom: 15px;
+    }
+
+    .tool-card a {
+      display: inline-block;
+      padding: 8px 14px;
+      background: #2563eb;
+      color: #fff;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      border-top: 1px solid #1e293b;
+      color: #64748b;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>AlphaPrime Free Online Tools</h1>
+    <p>Fast, free, frontend-only tools – no login required</p>
+  </header>
+
+  <main>
+    <h2>Available Tools</h2>
+
+    <div class="tools">
+      <div class="tool-card">
+        <h3>Image Tools</h3>
+        <p>Resize and compress images directly in your browser.</p>
+        <a href="./image-tools/">Open Tool</a>
+      </div>
+
+      <div class="tool-card">
+        <h3>Base64 Encode / Decode</h3>
+        <p>Encode or decode Base64 strings instantly.</p>
+        <a href="./Base64 Encode Decode/">Open Tool</a>
+      </div>
+
+      <div class="tool-card">
+        <h3>Text Case Converter</h3>
+        <p>Convert text to UPPERCASE, lowercase and more.</p>
+        <a href="./Text Case Converter/">Open Tool</a>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    © 2026 AlphaPrime · Built with ❤️ using pure frontend
+  </footer>
+
+</body>
+</html>
